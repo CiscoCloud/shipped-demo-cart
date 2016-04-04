@@ -217,14 +217,14 @@ func Cart(rw http.ResponseWriter, req *http.Request) {
 			if len(cart.Items) > 0 {
 				for i := 0; i < len(cart.Items); i++ {
 					if cart.Items[i].ItemID == itemNumber {
-						if cart.Items[i].Quantity > 1 {
-							// Reduce quantity
-							deleteItem(cart, itemNumber, i, false)
-							rw.WriteHeader(http.StatusAccepted)
-							success := response(success, http.StatusAccepted, "Item: "+strconv.Itoa(itemNumber)+" has quantity of "+strconv.Itoa(cart.Items[i].Quantity))
-							rw.Write(success)
-							return
-						}
+//						if cart.Items[i].Quantity > 1 {
+//							// Reduce quantity
+//							deleteItem(cart, itemNumber, i, false)
+//							rw.WriteHeader(http.StatusAccepted)
+//							success := response(success, http.StatusAccepted, "Item: "+strconv.Itoa(itemNumber)+" has quantity of "+strconv.Itoa(cart.Items[i].Quantity))
+//							rw.Write(success)
+//							return
+//						}
 						// Remove Item
 						log.Println("remove item")
 						deleteItem(cart, itemNumber, i, true)
@@ -269,6 +269,7 @@ func addItem(cart ShoppingCart, itemID int, itemQuantity int, itemIndex int, app
 	d1 := []byte(b)
 	f.Write(d1)
 }
+
 
 func deleteItem(cart ShoppingCart, itemID int, itemIndex int, removeItem bool) {
 	// Clear File
