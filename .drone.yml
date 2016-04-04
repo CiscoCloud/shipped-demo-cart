@@ -1,0 +1,34 @@
+image: golang:1.5
+git:
+  path: github.com/CiscoCloud/shipped-demo-cart
+script:
+  - echo "build commands"
+  - echo "no build command"
+  - echo "no test command"
+clone:
+  path: github.com/CiscoCloud/shipped-demo-cart
+build:
+  image: golang:1.5
+  commands:
+    - echo "build commands"
+    - echo "no build command"
+    - echo "no test command"
+publish:
+  docker:
+    file: ./Dockerfile
+    username: $$bintray_user
+    password: $$bintray_api_key
+    registry: $$bintray_registry
+    repo: $$bintray_repo
+    email: $$bintray_user_email
+    tag: $$COMMIT
+    
+
+
+notify:
+  webhook:
+    image: shippedrepos-docker-drone.bintray.io/drone-webhook
+    urls:
+      - "http://shipped-api.tx3.shipped-cisco.com/webhooks/drone"
+    on_success: true
+    on_failure: true
