@@ -52,7 +52,7 @@ func main() {
 
 	// The default listening port should be set to something suitable.
 	// 8888 was chosen so we could test Catalog by copying into the golang buildpack.
-	listenPort := getenv("SHIPPED_CATALOG_LISTEN_PORT", "8888")
+	listenPort := getenv("SHIPPED_CART_LISTEN_PORT", "8888")
 
 	log.Println("Listening on Port: " + listenPort)
 	http.ListenAndServe(fmt.Sprintf(":%s", listenPort), nil)
@@ -70,7 +70,9 @@ func getenv(name string, dflt string) (val string) {
 func Cart(rw http.ResponseWriter, req *http.Request) {
 	rw.Header().Set("Content-Type", "application/json")
 	rw.Header().Set("Access-Control-Allow-Origin", "*")
+	rw.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
 
+	fmt.Println(req.Method)
 	switch req.Method {
 	case "GET":
 		// Serve the resource.
@@ -173,6 +175,8 @@ func Cart(rw http.ResponseWriter, req *http.Request) {
 		rw.WriteHeader(http.StatusMethodNotAllowed)
 		err := response(error, http.StatusMethodNotAllowed, req.Method+" not allowed")
 		rw.Write(err)
+	case "OPTIONS":
+		break
 	case "DELETE":
 		// Remove the record.
 		url := ""
@@ -203,50 +207,47 @@ func Cart(rw http.ResponseWriter, req *http.Request) {
 		}
 		defer res.Body.Close()
 
-		if mock == true {
-			file, e := ioutil.ReadFile("./cart.json")
-			if e != nil {
-				fmt.Printf("File error: %v\n", e)
-				os.Exit(1)
-			}
+		// if mock == true {
+		file, e := ioutil.ReadFile("./cart.json")
+		if e != nil {
+			fmt.Printf("File error: %v\n", e)
+			os.Exit(1)
+		}
 
-			var cart ShoppingCart
-			err := json.Unmarshal(file, &cart)
-			fmt.Println(err)
+		var cart ShoppingCart
+		err = json.Unmarshal(file, &cart)
+		fmt.Println(err)
 
-			if len(cart.Items) > 0 {
-				for i := 0; i < len(cart.Items); i++ {
-					if cart.Items[i].ItemID == itemNumber {
-//						if cart.Items[i].Quantity > 1 {
-//							// Reduce quantity
-//							deleteItem(cart, itemNumber, i, false)
-//							rw.WriteHeader(http.StatusAccepted)
-//							success := response(success, http.StatusAccepted, "Item: "+strconv.Itoa(itemNumber)+" has quantity of "+strconv.Itoa(cart.Items[i].Quantity))
-//							rw.Write(success)
-//							return
-//						}
-						// Remove Item
-						log.Println("remove item")
-						deleteItem(cart, itemNumber, i, true)
-
+		if len(cart.Items) > 0 {
+			for i := 0; i < len(cart.Items); i++ {
+				if cart.Items[i].ItemID == itemNumber {
+					if cart.Items[i].Quantity > 1 {
+						// Reduce quantity
+						deleteItem(cart, itemNumber, i, false)
 						rw.WriteHeader(http.StatusAccepted)
-						success := response(success, http.StatusAccepted, strconv.Itoa(itemNumber)+" is no longer in your shopping cart.")
+						success := response(success, http.StatusAccepted, "Item: "+strconv.Itoa(itemNumber)+" has quantity of "+strconv.Itoa(cart.Items[i].Quantity))
 						rw.Write(success)
 						return
 					}
+					// Remove Item
+					log.Println("remove item")
+					deleteItem(cart, itemNumber, i, true)
+
+					rw.WriteHeader(http.StatusAccepted)
+					success := response(success, http.StatusAccepted, strconv.Itoa(itemNumber)+" is no longer in your shopping cart.")
+					rw.Write(success)
+					return
 				}
-				// Item Doesn't exist
-				rw.WriteHeader(http.StatusNotFound)
-				error := response(success, http.StatusNotFound, strconv.Itoa(itemNumber)+" isn't in cart.")
-				rw.Write(error)
-			} else {
-				log.Println("Cart is empty")
-				rw.WriteHeader(http.StatusNotFound)
-				error := response(success, http.StatusNotFound, strconv.Itoa(itemNumber)+" isn't in cart.")
-				rw.Write(error)
 			}
+			// Item Doesn't exist
+			rw.WriteHeader(http.StatusNotFound)
+			error := response(success, http.StatusNotFound, strconv.Itoa(itemNumber)+" isn't in cart.")
+			rw.Write(error)
 		} else {
-			// Delete DB Item Quantity
+			log.Println("Cart is empty")
+			rw.WriteHeader(http.StatusNotFound)
+			error := response(success, http.StatusNotFound, strconv.Itoa(itemNumber)+" isn't in cart.")
+			rw.Write(error)
 		}
 
 	default:
@@ -269,7 +270,6 @@ func addItem(cart ShoppingCart, itemID int, itemQuantity int, itemIndex int, app
 	d1 := []byte(b)
 	f.Write(d1)
 }
-
 
 func deleteItem(cart ShoppingCart, itemID int, itemIndex int, removeItem bool) {
 	// Clear File
@@ -365,31 +365,32 @@ func response(status string, code int, message string) []byte {
 }
 
 func mockCheck(req *http.Request) bool {
-	mock := req.URL.Query().Get("mock")
-	if len(mock) != 0 {
-		if mock == "true" {
-			return true
-		}
-	}
-	return false
+	// mock := req.URL.Query().Get("mock")
+	// if len(mock) != 0 {
+	// 	if mock == "true" {
+	// 		return true
+	// 	}
+	// }
+	return true
 }
 
 func shippedDbCheck(itemNumber int) string {
 	// Get Catalog Item
 	url := ""
-	endpoint := os.Getenv("CATALOG_HOST")
+	endpoint := "http://staging--shop--catalog--dba7f3.shipped-cisco.com/"
+	// endpoint := os.Getenv("CATALOG_HOST")
 
 	// ip := os.Getenv("TWO_GO_CATALOG_PORT_8888_TCP_ADDR")
 	// port := os.Getenv("TWO_GO_CATALOG_PORT_8888_TCP_PORT")
 	log.Println("Catalog: ", endpoint)
 
-	for _, e := range os.Environ() {
-		pair := strings.Split(e, "=")
-		fmt.Println(pair[0])
-	}
+	// for _, e := range os.Environ() {
+	// 	pair := strings.Split(e, "=")
+	// 	fmt.Println(pair[0])
+	// }
 
 	if endpoint != "" {
-		url = endpoint + "/v1/catalog/" + strconv.Itoa(itemNumber)
+		url = endpoint + "v1/catalog/" + strconv.Itoa(itemNumber) // + "?mock=true"
 	} else {
 		url = "http://localhost:8889/v1/catalog/" + strconv.Itoa(itemNumber)
 	}
