@@ -66,7 +66,7 @@ Expected Result:
 ```
 - **GET /v1/cart/**
 ```
-curl -H "Content-Type: application/json" -X GET http://localhost:8888/api/cart/
+curl -H "Content-Type: application/json" -X GET http://localhost:8888/v1/cart/
 Expected Result
 {
   "cart": [{
