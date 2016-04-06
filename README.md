@@ -46,7 +46,7 @@ or
 ----------------------------
 - **POST /v1/cart/{item_id}**
 ```
-curl -H "Content-Type: application/json" -X POST http://localhost:8000/v1/cart/{item_id}
+curl -H "Content-Type: application/json" -X POST http://localhost:8888/v1/cart/{item_id}
 Expected Result:
 {
     "success":true,
@@ -56,7 +56,7 @@ Expected Result:
 ```
 - **DELETE /v1/cart/{item_id}**
 ```
-curl -H "Content-Type: application/json" -X DELETE http://localhost:8000/v1/cart/{item_id}
+curl -H "Content-Type: application/json" -X DELETE http://localhost:8888/v1/cart/{item_id}
 Expected Result:
 {
     "success":true,
@@ -66,7 +66,7 @@ Expected Result:
 ```
 - **GET /v1/cart/**
 ```
-curl -H "Content-Type: application/json" -X GET http://localhost:8000/api/cart/
+curl -H "Content-Type: application/json" -X GET http://localhost:8888/api/cart/
 Expected Result
 {
   "cart": [{
@@ -77,7 +77,7 @@ Expected Result
 ```
 - **GET /v1/order/**
 ```
-curl -i -H "Content-Type: application/json" -X GET http://localhost:8000/v1/order/
+curl -i -H "Content-Type: application/json" -X GET http://localhost:8888/v1/order/
 Expected Result
 {
   "cart": [{

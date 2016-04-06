@@ -21,13 +21,23 @@ type Item struct {
 	Price       float64 `json:"price"`
 }
 
-type ShoppingCart struct {
-	Items []CartItem `json:"items"`
+type CartStruct struct {
+	Carts []Carts
 }
 
-type CartItem struct {
+type Carts struct {
+	User  string `json:"User"`
+	Items []Items
+}
+
+type Items struct {
 	ItemID   int `json:"item_id"`
 	Quantity int `json:"quantity"`
+}
+
+type AuthResponse struct {
+	AccessToken string `json:"accessToken"`
+	UserName    string `json:"username"`
 }
 
 type Info struct {
@@ -44,6 +54,8 @@ type Response struct {
 
 const error = "ERROR"
 const success = "SUCCESS"
+const accountURL = "http://staging--shop--account--a6cc3a.shipped-cisco.com"
+const catalogURL = "http://staging--shop--catalog--dba7f3.shipped-cisco.com"
 
 func main() {
 	http.HandleFunc("/", HandleIndex)
@@ -53,6 +65,10 @@ func main() {
 	// The default listening port should be set to something suitable.
 	// 8888 was chosen so we could test Catalog by copying into the golang buildpack.
 	listenPort := getenv("SHIPPED_CART_LISTEN_PORT", "8888")
+	for _, e := range os.Environ() {
+		pair := strings.Split(e, "=")
+		fmt.Println(pair[0])
+	}
 
 	log.Println("Listening on Port: " + listenPort)
 	http.ListenAndServe(fmt.Sprintf(":%s", listenPort), nil)
@@ -75,17 +91,24 @@ func Cart(rw http.ResponseWriter, req *http.Request) {
 	fmt.Println(req.Method)
 	switch req.Method {
 	case "GET":
-		// Serve the resource.
-		file, e := ioutil.ReadFile("./cart.json")
-		if e != nil {
-			fmt.Printf("File error: %v\n", e)
-			os.Exit(1)
+		userCart := getUserCart()
+		resp, err := json.MarshalIndent(userCart, "", "    ")
+		if err != nil {
+			log.Printf("Error marshalling returned catalog item %s", err.Error())
+			return
 		}
 		// Send Cart
 		rw.WriteHeader(http.StatusOK)
-		rw.Write([]byte(file))
+		rw.Write([]byte(resp))
 		log.Println("Sent Cart")
 	case "POST":
+		fmt.Println(getUserCartID())
+		if getUserCartID() == -1 {
+			// Item doesn't exist
+			rw.WriteHeader(http.StatusNotAcceptable)
+			success := response(error, http.StatusNotAcceptable, "Please Login")
+			rw.Write(success)
+		}
 		url := ""
 		// Get item number
 		uriSegments := strings.Split(req.URL.Path, "/")
@@ -122,22 +145,13 @@ func Cart(rw http.ResponseWriter, req *http.Request) {
 			if data.ItemID != 0 {
 				log.Println("Item Exist!")
 				fmt.Println(data.Descrpition)
+				userCart := getUserCart()
 
-				file, e := ioutil.ReadFile("./cart.json")
-				if e != nil {
-					fmt.Printf("File error: %v\n", e)
-					os.Exit(1)
-				}
-
-				var cart ShoppingCart
-				err := json.Unmarshal(file, &cart)
-				fmt.Println(err)
-
-				if len(cart.Items) > 0 {
+				if len(userCart) > 0 {
 					// Quantity increased
-					for i := 0; i < len(cart.Items); i++ {
-						if cart.Items[i].ItemID == itemNumber {
-							addItem(cart, itemNumber, cart.Items[i].Quantity+1, i, false)
+					for i := 0; i < len(userCart); i++ {
+						if userCart[i].ItemID == itemNumber {
+							addItem(itemNumber, userCart[i].Quantity+1)
 							rw.WriteHeader(http.StatusAccepted)
 							success := response(success, http.StatusAccepted, "Item: "+strconv.Itoa(itemNumber)+" added to cart!")
 							rw.Write(success)
@@ -146,14 +160,14 @@ func Cart(rw http.ResponseWriter, req *http.Request) {
 					}
 					// New Item added to cart
 					fmt.Println(itemNumber)
-					addItem(cart, itemNumber, 1, len(cart.Items), true)
+					addItem(itemNumber, len(userCart))
 					rw.WriteHeader(http.StatusAccepted)
 					success := response(success, http.StatusAccepted, "Item: "+strconv.Itoa(itemNumber)+" added to cart!")
 					rw.Write(success)
 					return
 				} else {
 					log.Println("Cart is empty")
-					addItem(cart, itemNumber, 1, 0, true)
+					addItem(itemNumber, 1)
 					rw.WriteHeader(http.StatusAccepted)
 					success := response(success, http.StatusAccepted, "Item: "+strconv.Itoa(itemNumber)+" added to cart!")
 					rw.Write(success)
@@ -207,31 +221,21 @@ func Cart(rw http.ResponseWriter, req *http.Request) {
 		}
 		defer res.Body.Close()
 
-		// if mock == true {
-		file, e := ioutil.ReadFile("./cart.json")
-		if e != nil {
-			fmt.Printf("File error: %v\n", e)
-			os.Exit(1)
-		}
-
-		var cart ShoppingCart
-		err = json.Unmarshal(file, &cart)
-		fmt.Println(err)
-
-		if len(cart.Items) > 0 {
-			for i := 0; i < len(cart.Items); i++ {
-				if cart.Items[i].ItemID == itemNumber {
-					if cart.Items[i].Quantity > 1 {
+		userCart := getUserCart()
+		if len(userCart) > 0 {
+			for i := 0; i < len(userCart); i++ {
+				if userCart[i].ItemID == itemNumber {
+					if userCart[i].Quantity > 1 {
 						// Reduce quantity
-						deleteItem(cart, itemNumber, i, false)
+						deleteItem(itemNumber)
 						rw.WriteHeader(http.StatusAccepted)
-						success := response(success, http.StatusAccepted, "Item: "+strconv.Itoa(itemNumber)+" has quantity of "+strconv.Itoa(cart.Items[i].Quantity))
+						success := response(success, http.StatusAccepted, "Item: "+strconv.Itoa(itemNumber)+" has quantity of "+strconv.Itoa(userCart[i].Quantity))
 						rw.Write(success)
 						return
 					}
 					// Remove Item
 					log.Println("remove item")
-					deleteItem(cart, itemNumber, i, true)
+					deleteItem(itemNumber)
 
 					rw.WriteHeader(http.StatusAccepted)
 					success := response(success, http.StatusAccepted, strconv.Itoa(itemNumber)+" is no longer in your shopping cart.")
@@ -258,34 +262,94 @@ func Cart(rw http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func addItem(cart ShoppingCart, itemID int, itemQuantity int, itemIndex int, appendItem bool) {
-	cartItem := CartItem{itemID, itemQuantity}
-	if appendItem {
-		cart.Items = append(cart.Items, cartItem)
-	} else {
-		cart.Items[itemIndex].Quantity++
-	}
-	f, _ := os.OpenFile("cart.json", os.O_RDWR, 0660)
-	b, _ := json.Marshal(cart)
-	d1 := []byte(b)
-	f.Write(d1)
-}
+func addItem(itemID int, itemQuantity int) {
+	f, _ := ioutil.ReadFile("cart.json")
+	userID := getUserCartID()
 
-func deleteItem(cart ShoppingCart, itemID int, itemIndex int, removeItem bool) {
-	// Clear File
+	var cart CartStruct
+	json.Unmarshal(f, &cart)
+
+	fmt.Println(cart.Carts[userID].User)
+	fmt.Println(len(cart.Carts[userID].Items), itemID-1)
+	if len(cart.Carts[userID].Items) > itemID-1 {
+		fmt.Println("Adding")
+		flag := false
+		for i := 0; i < len(cart.Carts[userID].Items); i++ {
+			if cart.Carts[userID].Items[i].ItemID == itemID {
+				cart.Carts[userID].Items[i].Quantity++
+				flag = true
+			}
+		}
+		if flag != true {
+			var item = Items{itemID, 1}
+			cart.Carts[userID].Items = append(cart.Carts[userID].Items, item)
+		}
+	} else {
+		var item = Items{itemID, 1}
+		cart.Carts[userID].Items = append(cart.Carts[userID].Items, item)
+	}
+
 	os.Remove("cart.json")
 	os.Create("cart.json")
 
-	if !removeItem {
-		cart.Items[itemIndex].Quantity--
+	b, e := json.Marshal(cart)
+	d1 := []byte(b)
+	if e == nil {
+		file, _ := os.OpenFile("cart.json", os.O_RDWR, 0660)
+		file.Write(d1)
 	} else {
-		cart.Items = append(cart.Items[:itemIndex], cart.Items[itemIndex+1:]...)
+		fmt.Println(e)
+	}
+}
+
+func deleteItem(itemID int) {
+	f, _ := ioutil.ReadFile("cart.json")
+	userID := getUserCartID()
+
+	fmt.Println(getUserCartID())
+	var cart CartStruct
+	json.Unmarshal(f, &cart)
+
+	fmt.Println(cart.Carts[userID].User)
+	fmt.Println(len(cart.Carts[userID].Items), itemID-1)
+	if len(cart.Carts[userID].Items) > itemID-1 {
+		fmt.Println("Deleting")
+
+		for i := 0; i < len(cart.Carts[userID].Items); i++ {
+			if cart.Carts[userID].Items[i].ItemID == itemID {
+				cart.Carts[userID].Items[i].Quantity--
+				if cart.Carts[userID].Items[i].Quantity <= 0 {
+					cart.Carts[userID].Items = append(cart.Carts[userID].Items[:i], cart.Carts[userID].Items[i+1:]...)
+				}
+			}
+		}
 	}
 
-	f, _ := os.OpenFile("cart.json", os.O_RDWR, 0660)
-	b, _ := json.Marshal(cart)
+	os.Remove("cart.json")
+	os.Create("cart.json")
+
+	b, e := json.Marshal(cart)
 	d1 := []byte(b)
-	f.Write(d1)
+	if e == nil {
+		file, _ := os.OpenFile("cart.json", os.O_RDWR, 0660)
+		file.Write(d1)
+	} else {
+		fmt.Println(e)
+	}
+	// // Clear File
+	// os.Remove("cart.json")
+	// os.Create("cart.json")
+	//
+	// if !removeItem {
+	// 	cart.Items[itemIndex].Quantity--
+	// } else {
+	// 	cart.Items = append(cart.Items[:itemIndex], cart.Items[itemIndex+1:]...)
+	// }
+	//
+	// f, _ := os.OpenFile("cart.json", os.O_RDWR, 0660)
+	// b, _ := json.Marshal(cart)
+	// d1 := []byte(b)
+	// f.Write(d1)
 }
 
 func Order(rw http.ResponseWriter, req *http.Request) {
@@ -337,13 +401,8 @@ func Order(rw http.ResponseWriter, req *http.Request) {
 			// Save DB Info
 
 		}
-	case "PUT":
+	case "PUT", "DELETE":
 		// Update an existing record.
-		rw.WriteHeader(http.StatusMethodNotAllowed)
-		err := response(error, http.StatusMethodNotAllowed, req.Method+" not allowed")
-		rw.Write(err)
-	case "DELETE":
-		// Remove the record.
 		rw.WriteHeader(http.StatusMethodNotAllowed)
 		err := response(error, http.StatusMethodNotAllowed, req.Method+" not allowed")
 		rw.Write(err)
@@ -377,24 +436,90 @@ func mockCheck(req *http.Request) bool {
 func shippedDbCheck(itemNumber int) string {
 	// Get Catalog Item
 	url := ""
-	endpoint := "http://staging--shop--catalog--dba7f3.shipped-cisco.com/"
-	// endpoint := os.Getenv("CATALOG_HOST")
 
-	// ip := os.Getenv("TWO_GO_CATALOG_PORT_8888_TCP_ADDR")
-	// port := os.Getenv("TWO_GO_CATALOG_PORT_8888_TCP_PORT")
-	log.Println("Catalog: ", endpoint)
-
-	// for _, e := range os.Environ() {
-	// 	pair := strings.Split(e, "=")
-	// 	fmt.Println(pair[0])
-	// }
-
-	if endpoint != "" {
-		url = endpoint + "v1/catalog/" + strconv.Itoa(itemNumber) // + "?mock=true"
+	if catalogURL != "" {
+		url = catalogURL + "/v1/catalog/" + strconv.Itoa(itemNumber) // + "?mock=true"
 	} else {
 		url = "http://localhost:8889/v1/catalog/" + strconv.Itoa(itemNumber)
 	}
 	return url
+}
+
+func getUserCartID() int {
+	// Get User
+	endpoint := "/v1/session/"
+
+	res, e := http.Get(accountURL + endpoint)
+
+	if e != nil {
+		// Update an existing record.
+		return -1
+	}
+	defer res.Body.Close()
+
+	decoder := json.NewDecoder(res.Body)
+	var data AuthResponse
+	e = decoder.Decode(&data)
+
+	fmt.Println(data.UserName)
+	user := data.UserName
+	fmt.Println(user)
+	// Serve the resource.
+	file, e := ioutil.ReadFile("./cart.json")
+	if e != nil {
+		fmt.Printf("File error: %v\n", e)
+		os.Exit(1)
+	}
+
+	var cart CartStruct
+	err := json.Unmarshal(file, &cart)
+	fmt.Println(err)
+
+	for i := 0; i < len(cart.Carts); i++ {
+		if user == cart.Carts[i].User {
+			return i
+		}
+	}
+	return -1
+}
+func getUserCart() []Items {
+	// Get User
+	// user := "neelesh"
+	endpoint := "/v1/session/"
+
+	res, e := http.Get(accountURL + endpoint)
+
+	if e != nil {
+		// Update an existing record.
+
+	}
+	defer res.Body.Close()
+
+	decoder := json.NewDecoder(res.Body)
+	var data AuthResponse
+	e = decoder.Decode(&data)
+
+	fmt.Println(data.UserName)
+	user := data.UserName
+	fmt.Println(user)
+	// Serve the resource.
+	file, e := ioutil.ReadFile("./cart.json")
+	if e != nil {
+		fmt.Printf("File error: %v\n", e)
+		os.Exit(1)
+	}
+
+	var cart CartStruct
+	err := json.Unmarshal(file, &cart)
+	fmt.Println(err)
+	var userCart []Items
+
+	for i := 0; i < len(cart.Carts); i++ {
+		if user == cart.Carts[i].User {
+			userCart = cart.Carts[i].Items
+		}
+	}
+	return userCart
 }
 
 func HandleIndex(rw http.ResponseWriter, req *http.Request) {
