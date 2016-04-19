@@ -60,23 +60,17 @@ type Username struct {
 const error = "ERROR"
 const success = "SUCCESS"
 
-// const accountURL = "http://localhost:8887"
-const accountURL = "http://staging--shop--account--a6cc3a.shipped-cisco.com"
-const catalogURL = "http://staging--shop--catalog--dba7f3.shipped-cisco.com"
+var accountURL = os.Getenv("SHIPPED_DEMO_ACCOUNT")
+var catalogURL = os.Getenv("SHIPPED_DEMO_CATALOG")
 
 func main() {
+	// Assign Env
 	http.HandleFunc("/", HandleIndex)
 	http.HandleFunc("/v1/cart/", Cart)
 	http.HandleFunc("/v1/order/", Order)
 
 	// The default listening port should be set to something suitable.
-	// 8888 was chosen so we could test Catalog by copying into the golang buildpack.
-	listenPort := getenv("SHIPPED_CART_LISTEN_PORT", "8888")
-	// accountURL = getenv("SHIPPED_CART_LISTEN_PORT", "8888")
-	// for _, e := range os.Environ() {
-	// 	pair := strings.Split(e, "=")
-	// 	fmt.Println(pair[0])
-	// }
+	listenPort := "8888" //getenv("SHIPPED_CART_LISTEN_PORT", "8888")
 
 	log.Println("Listening on Port: " + listenPort)
 	http.ListenAndServe(fmt.Sprintf(":%s", listenPort), nil)
@@ -95,6 +89,8 @@ func Cart(rw http.ResponseWriter, req *http.Request) {
 	rw.Header().Set("Content-Type", "application/json")
 	rw.Header().Set("Access-Control-Allow-Origin", "*")
 	rw.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+
+	fmt.Println(accountURL)
 
 	fmt.Println(req.Method)
 	switch req.Method {

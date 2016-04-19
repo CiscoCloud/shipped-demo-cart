@@ -64,9 +64,9 @@ Expected Result:
     "message":"Deleted {name} from Cart"
 }
 ```
-- **GET /v1/cart/**
+- **POST /v1/cart/**
 ```
-curl -H "Content-Type: application/json" -X GET http://localhost:8888/v1/cart/
+curl -H "Content-Type: application/json" -X POST -d '{"username":"nick"}' http://localhost:8888/v1/cart/
 Expected Result
 {
   "cart": [{
