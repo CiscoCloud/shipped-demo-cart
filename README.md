@@ -38,7 +38,7 @@ or
 |:---:|:---:|:---:|
 |/v1/cart/<itemID>| POST | Adds Item to cart |
 |/v1/cart/<itemID>| DELETE | Deletes Item to cart |
-|/v1/cart/| GET | List cart items |
+|/v1/cart/| POST | List cart items |
 |/v1/order/| GET | Send Order |
 |/v1/order/| POST | Send Info |
 
