@@ -1,0 +1,4 @@
+#!/bin/bash
+go get -d
+go build -o .shipped/out
+cp .shipped/out /tmp/shipped-out
