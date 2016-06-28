@@ -60,8 +60,8 @@ type Username struct {
 const error = "ERROR"
 const success = "SUCCESS"
 
-var accountURL = os.Getenv("SHIPPED_DEMO_ACCOUNT")
-var catalogURL = os.Getenv("SHIPPED_DEMO_CATALOG")
+var accountURL = os.Getenv("HOST_ACCOUNT")
+var catalogURL = os.Getenv("HOST_CATALOGBACKEND")
 
 func main() {
 	// Assign Env
