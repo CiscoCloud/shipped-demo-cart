@@ -452,13 +452,13 @@ func response(status string, code int, message string) []byte {
 }
 
 func mockCheck(req *http.Request) bool {
-	// mock := req.URL.Query().Get("mock")
-	// if len(mock) != 0 {
-	// 	if mock == "true" {
-	// 		return true
-	// 	}
-	// }
-	return true
+	mock := req.URL.Query().Get("mock")
+	if len(mock) != 0 {
+		if mock == "true" {
+			return true
+		}
+	}
+	return false
 }
 
 func shippedDbCheck(itemNumber int) string {
@@ -468,7 +468,7 @@ func shippedDbCheck(itemNumber int) string {
 	if catalogURL != "" {
 		url = catalogURL + "/v1/catalog/" + strconv.Itoa(itemNumber) // + "?mock=true"
 	} else {
-		url = "http://localhost:8889/v1/catalog/" + strconv.Itoa(itemNumber)
+		url = "http://localhost:38892/v1/catalog/" + strconv.Itoa(itemNumber)
 	}
 	return url
 }
@@ -524,6 +524,7 @@ func verify(username string) bool {
 	endpoint := "/v1/session/"
 	var jsonStr = []byte(`{"username":"` + username + `"}`)
 
+	// accountURL = "http://staging--shop--shipped-demo-account--68b68b.gce.shipped-cisco.com/"
 	req, err := http.NewRequest("POST", accountURL+endpoint, bytes.NewBuffer(jsonStr))
 	req.Header.Set("Content-Type", "application/json")
 
